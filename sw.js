@@ -1,4 +1,4 @@
-const CACHE = "artaunh-v1.5.2";
+const CACHE = "artaunh-v1.5.3";
 
 const APP_SHELL = [
     "./",
