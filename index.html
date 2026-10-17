@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="ArtaUnh - Pencatat Pengeluaran & Pemasukan Pribadi yang Elegan">
+    <meta name="theme-color" content="#533afd">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="ArtaUnh">
+    <title>ArtaUnh - Kelola Keuanganmu dengan Cerdas</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600;700;800&family=Source+Code+Pro:wght@400;500;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
+    <link rel="icon" type="image/png" href="assets/logo-icon.png">
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+</head>
+<body>
+
+    <div id="loading-screen" class="loading-screen" role="status" aria-label="Memuat ArtaUnh">
+        <div class="loading-content">
+            <img class="loading-logo" src="assets/logo-icon.png" alt="" aria-hidden="true">
+            <span class="loading-text">ArtaUnh</span>
+            <div class="loading-spinner" aria-hidden="true"></div>
+        </div>
+    </div>
+
+    <div id="auth-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="auth-title" hidden>
+        <div class="modal-backdrop" tabindex="-1"></div>
+        <div class="modal-container auth-container">
+            <button class="modal-close" aria-label="Tutup" id="auth-close">
+                <i data-lucide="x" size="20"></i>
+            </button>
+
+            <div class="auth-header">
+                <img class="auth-logo" src="assets/logo-icon.png" alt="ArtaUnh">
+                <h1 id="auth-title">ArtaUnh</h1>
+                <p class="auth-subtitle">Kelola keuangan pribadi dengan cerdas</p>
+            </div>
+
+            <form id="login-form" class="auth-form" novalidate>
+                <div class="form-group">
+                    <label for="login-email">Email</label>
+                    <input type="email" id="login-email" name="email" required autocomplete="email" placeholder="kamu@email.com">
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Kata Sandi</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="login-password" name="password" required autocomplete="current-password" placeholder="••••••••">
+                        <button type="button" class="password-toggle" aria-label="Tampilkan kata sandi">
+                            <i data-lucide="eye" size="18"></i>
+                        </button>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Masuk</button>
+                <p class="auth-switch">Belum punya akun? <button type="button" id="show-register">Daftar</button></p>
+            </form>
+
+            <form id="register-form" class="auth-form" hidden novalidate>
+                <div class="form-group">
+                    <label for="register-name">Nama Lengkap</label>
+                    <input type="text" id="register-name" name="name" required autocomplete="name" placeholder="Nama kamu">
+                </div>
+                <div class="form-group">
+                    <label for="register-email">Email</label>
+                    <input type="email" id="register-email" name="email" required autocomplete="email" placeholder="kamu@email.com">
+                </div>
+                <div class="form-group">
+                    <label for="register-password">Kata Sandi</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="register-password" name="password" required minlength="8" autocomplete="new-password" placeholder="Min. 8 karakter">
+                        <button type="button" class="password-toggle" aria-label="Tampilkan kata sandi">
+                            <i data-lucide="eye" size="18"></i>
+                        </button>
+                    </div>
+                    <p class="form-hint">Minimal 8 karakter</p>
+                </div>
+                <div class="form-group">
+                    <label for="register-confirm">Konfirmasi Kata Sandi</label>
+                    <input type="password" id="register-confirm" name="confirm" required autocomplete="new-password" placeholder="Ulangi kata sandi">
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Daftar</button>
+                <p class="auth-switch">Sudah punya akun? <button type="button" id="show-login">Masuk</button></p>
+            </form>
+        </div>
+    </div>
+
+    <div id="app" class="app" hidden>
+
+        <nav class="mobile-nav" role="navigation" aria-label="Navigasi utama">
+            <a href="#dashboard" class="nav-item active" data-tab="dashboard" aria-current="page">
+                <i data-lucide="layout-dashboard" size="22"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="#transactions" class="nav-item" data-tab="transactions" aria-current="page">
+                <i data-lucide="list" size="22"></i>
+                <span>Transaksi</span>
+            </a>
+            <a href="#add-transaction" class="nav-item nav-fab" data-tab="add" aria-label="Tambah transaksi">
+                <i data-lucide="plus" size="24"></i>
+            </a>
+            <a href="#reports" class="nav-item" data-tab="reports" aria-current="page">
+                <i data-lucide="bar-chart-2" size="22"></i>
+                <span>Laporan</span>
+            </a>
+            <a href="#settings" class="nav-item" data-tab="settings" aria-current="page">
+                <i data-lucide="settings" size="22"></i>
+                <span>Pengaturan</span>
+            </a>
+        </nav>
+
+        <aside class="sidebar" role="navigation" aria-label="Navigasi sidebar">
+            <div class="sidebar-header">
+                <a href="#dashboard" class="sidebar-brand" aria-label="ArtaUnh - Beranda">
+                    <img src="assets/logo-icon.png" alt="" aria-hidden="true">
+                    <span>ArtaUnh</span>
+                </a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#dashboard" class="sidebar-item active" data-tab="dashboard">
+                    <i data-lucide="layout-dashboard" size="20"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#transactions" class="sidebar-item" data-tab="transactions">
+                    <i data-lucide="list" size="20"></i>
+                    <span>Transaksi</span>
+                </a>
+                <a href="#reports" class="sidebar-item" data-tab="reports">
+                    <i data-lucide="bar-chart-2" size="20"></i>
+                    <span>Laporan</span>
+                </a>
+                <a href="#budgets" class="sidebar-item" data-tab="budgets">
+                    <i data-lucide="target" size="20"></i>
+                    <span>Anggaran</span>
+                </a>
+                <a href="#settings" class="sidebar-item" data-tab="settings">
+                    <i data-lucide="settings" size="20"></i>
+                    <span>Pengaturan</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-menu" id="user-menu">
+                    <button class="user-menu-trigger" aria-expanded="false" aria-haspopup="true">
+                        <div class="user-avatar" id="user-avatar">U</div>
+                        <span class="user-name" id="user-name">User</span>
+                        <i data-lucide="chevron-down" size="16"></i>
+                    </button>
+                    <div class="user-dropdown" role="menu" hidden>
+                        <div class="user-info">
+                            <div class="user-avatar large" id="dropdown-avatar">U</div>
+                            <div>
+                                <p class="dropdown-name" id="dropdown-name"></p>
+                                <p class="dropdown-email" id="dropdown-email"></p>
+                            </div>
+                        </div>
+                        <hr class="dropdown-divider">
+                        <button class="dropdown-item" role="menuitem" id="btn-profile">
+                            <i data-lucide="user" size="16"></i> Profil
+                        </button>
+                        <button class="dropdown-item" role="menuitem" id="btn-theme">
+                            <i data-lucide="sun" size="16" id="theme-icon"></i> <span id="theme-label">Mode Terang</span>
+                        </button>
+                        <hr class="dropdown-divider">
+                        <button class="dropdown-item danger" role="menuitem" id="btn-logout">
+                            <i data-lucide="log-out" size="16"></i> Keluar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content" role="main">
+
+            <header class="top-bar" role="banner">
+                <div class="top-bar-left">
+                    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Buka menu" aria-expanded="false">
+                        <i data-lucide="menu" size="22"></i>
+                    </button>
+                    <h1 class="page-title" id="page-title">Dashboard</h1>
+                </div>
+                <div class="top-bar-right">
+                    <button class="btn btn-ghost" id="btn-add-quick" aria-label="Tambah transaksi cepat">
+                        <i data-lucide="plus" size="18"></i>
+                        <span class="btn-text">Transaksi</span>
+                    </button>
+                    <div class="theme-toggle" id="theme-toggle" role="switch" aria-checked="false" aria-label="Toggle tema">
+                        <i data-lucide="sun" size="20" class="theme-icon-sun"></i>
+                        <i data-lucide="moon" size="20" class="theme-icon-moon"></i>
+                    </div>
+                </div>
+            </header>
+
+            <section id="panel-dashboard" class="tab-panel active" role="tabpanel" aria-labelledby="tab-dashboard">
+                <div class="dashboard-grid">
+
+                    <div class="balance-cards">
+                        <article class="balance-card income" aria-label="Total Pemasukan">
+                            <div class="balance-icon">
+                                <i data-lucide="trending-up" size="24"></i>
+                            </div>
+                            <div class="balance-info">
+                                <p class="balance-label">Pemasukan</p>
+                                <p class="balance-amount" id="total-income">Rp 0</p>
+                            </div>
+                        </article>
+                        <article class="balance-card expense" aria-label="Total Pengeluaran">
+                            <div class="balance-icon">
+                                <i data-lucide="trending-down" size="24"></i>
+                            </div>
+                            <div class="balance-info">
+                                <p class="balance-label">Pengeluaran</p>
+                                <p class="balance-amount" id="total-expense">Rp 0</p>
+                            </div>
+                        </article>
+                    </div>
+
+                    <div class="stats-grid">
+                        <article class="stat-card">
+                            <div class="stat-icon">
+                                <i data-lucide="calendar" size="20"></i>
+                            </div>
+                            <div>
+                                <p class="stat-value" id="this-month-count">0</p>
+                                <p class="stat-label">Transaksi Bulan Ini</p>
+                            </div>
+                        </article>
+                        <article class="stat-card">
+                            <div class="stat-icon">
+                                <i data-lucide="tags" size="20"></i>
+                            </div>
+                            <div>
+                                <p class="stat-value" id="categories-count">0</p>
+                                <p class="stat-label">Kategori Aktif</p>
+                            </div>
+                        </article>
+                        <article class="stat-card">
+                            <div class="stat-icon">
+                                <i data-lucide="target" size="20"></i>
+                            </div>
+                            <div>
+                                <p class="stat-value" id="budget-status">—</p>
+                                <p class="stat-label">Status Anggaran</p>
+                            </div>
+                        </article>
+                        <article class="stat-card">
+                            <div class="stat-icon">
+                                <i data-lucide="clock" size="20"></i>
+                            </div>
+                            <div>
+                                <p class="stat-value" id="avg-daily">Rp 0</p>
+                                <p class="stat-label">Rata-rata Harian</p>
+                            </div>
+                        </article>
+                    </div>
+
+                    <div class="charts-row">
+                        <article class="chart-card">
+                            <header class="card-header">
+                                <h2>Pengeluaran per Kategori</h2>
+                                <div class="chart-period">
+                                    <select id="expense-chart-period" aria-label="Periode grafik pengeluaran">
+                                        <option value="month">Bulan Ini</option>
+                                        <option value="week">Minggu Ini</option>
+                                        <option value="year">Tahun Ini</option>
+                                    </select>
+                                </div>
+                            </header>
+                            <div class="chart-wrapper">
+                                <canvas id="expense-chart" aria-label="Diagram lingkaran pengeluaran per kategori"></canvas>
+                                <div class="chart-legend" id="expense-legend"></div>
+                            </div>
+                        </article>
+                        <article class="chart-card">
+                            <header class="card-header">
+                                <h2>Tren Bulanan</h2>
+                                <div class="chart-period">
+                                    <select id="trend-chart-period" aria-label="Periode grafik tren">
+                                        <option value="6months">6 Bulan</option>
+                                        <option value="12months">12 Bulan</option>
+                                    </select>
+                                </div>
+                            </header>
+                            <div class="chart-wrapper">
+                                <canvas id="trend-chart" aria-label="Diagram garis tren pemasukan dan pengeluaran"></canvas>
+                            </div>
+                        </article>
+                    </div>
+
+                    <article class="recent-card">
+                        <header class="card-header">
+                            <h2>Transaksi Terbaru</h2>
+                            <a href="#transactions" class="btn btn-link">Lihat semua</a>
+                        </header>
+                        <div class="recent-list" id="recent-transactions">
+
+                        </div>
+                    </article>
+                </div>
+            </section>
+
+            <section id="panel-transactions" class="tab-panel" role="tabpanel" aria-labelledby="tab-transactions">
+                <header class="panel-header">
+                    <h2>Transaksi</h2>
+                    <button class="btn btn-primary" id="btn-add-transaction">
+                        <i data-lucide="plus" size="18"></i> Tambah
+                    </button>
+                </header>
+
+                <div class="transactions-toolbar">
+                    <div class="search-wrapper">
+                        <i data-lucide="search" size="18" class="search-icon"></i>
+                        <input type="search" id="transaction-search" placeholder="Cari transaksi..." aria-label="Cari transaksi">
+                    </div>
+                    <div class="filter-group">
+                        <select id="filter-type" aria-label="Filter tipe">
+                            <option value="all">Semua</option>
+                            <option value="income">Pemasukan</option>
+                            <option value="expense">Pengeluaran</option>
+                        </select>
+                        <select id="filter-category" aria-label="Filter kategori">
+                            <option value="all">Semua Kategori</option>
+                        </select>
+                        <select id="filter-period" aria-label="Filter periode">
+                            <option value="month">Bulan Ini</option>
+                            <option value="last-month">Bulan Lalu</option>
+                            <option value="quarter">Triwulan Ini</option>
+                            <option value="year">Tahun Ini</option>
+                            <option value="custom">Kustom</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="transactions-table-container">
+                    <table class="transactions-table" id="transactions-table" role="grid">
+                        <thead>
+                            <tr>
+                                <th scope="col">Tanggal</th>
+                                <th scope="col">Kategori</th>
+                                <th scope="col">Catatan</th>
+                                <th scope="col" class="text-right">Jumlah</th>
+                                <th scope="col"><span class="sr-only">Aksi</span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactions-body">
+
+                        </tbody>
+                    </table>
+                    <div class="empty-state" id="empty-transactions" hidden>
+                        <i data-lucide="inbox" size="48"></i>
+                        <h3>Belum ada transaksi</h3>
+                        <p>Mulai catat pemasukan atau pengeluaran pertama kamu</p>
+                        <button class="btn btn-primary" id="btn-first-transaction">
+                            <i data-lucide="plus" size="18"></i> Tambah Transaksi
+                        </button>
+                    </div>
+                </div>
+
+                <div class="pagination" id="transactions-pagination" hidden>
+                    <button class="btn btn-ghost btn-sm" id="prev-page" aria-label="Halaman sebelumnya">
+                        <i data-lucide="chevron-left" size="16"></i>
+                    </button>
+                    <span class="page-info" id="page-info">Halaman 1 dari 1</span>
+                    <button class="btn btn-ghost btn-sm" id="next-page" aria-label="Halaman selanjutnya">
+                        <i data-lucide="chevron-right" size="16"></i>
+                    </button>
+                </div>
+            </section>
+
+            <div id="transaction-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="transaction-modal-title" hidden>
+                <div class="modal-backdrop" tabindex="-1"></div>
+                <div class="modal-container transaction-modal-container">
+                    <header class="modal-header">
+                        <h2 id="transaction-modal-title">Tambah Transaksi</h2>
+                        <button class="modal-close" aria-label="Tutup" id="transaction-modal-close">
+                            <i data-lucide="x" size="20"></i>
+                        </button>
+                    </header>
+                    <form id="transaction-form" class="modal-body" novalidate>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="trans-type">Tipe *</label>
+                                <div class="type-selector" role="radiogroup" aria-label="Pilih tipe transaksi">
+                                    <label class="type-option">
+                                        <input type="radio" name="type" value="income" required>
+                                        <span class="type-option-content">
+                                            <i data-lucide="arrow-down-circle" size="20"></i>
+                                            <span>Pemasukan</span>
+                                        </span>
+                                    </label>
+                                    <label class="type-option">
+                                        <input type="radio" name="type" value="expense">
+                                        <span class="type-option-content">
+                                            <i data-lucide="arrow-up-circle" size="20"></i>
+                                            <span>Pengeluaran</span>
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="trans-category">Kategori *</label>
+                            <select id="trans-category" name="category" required aria-required="true">
+                                <option value="">Pilih kategori</option>
+                            </select>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="trans-amount">Jumlah *</label>
+                                <div class="amount-input-wrapper">
+                                    <span class="currency-prefix">Rp</span>
+                                    <input type="text" id="trans-amount" name="amount" required inputmode="numeric" autocomplete="off" placeholder="0" aria-label="Jumlah dalam Rupiah">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="trans-date">Tanggal *</label>
+                                <input type="date" id="trans-date" name="date" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="trans-note">Catatan</label>
+                            <textarea id="trans-note" name="note" rows="3" placeholder="Catatan opsional (mis: Belanja bulanan, Gaji bulan ini...)"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="trans-recurring" name="recurring">
+                                <span class="checkbox-custom"></span>
+                                Transaksi berulang (bulanan)
+                            </label>
+                        </div>
+
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-ghost" id="transaction-cancel">Batal</button>
+                            <button type="submit" class="btn btn-primary">Simpan</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <section id="panel-reports" class="tab-panel" role="tabpanel" aria-labelledby="tab-reports">
+                <header class="panel-header">
+                    <h2>Laporan Keuangan</h2>
+                </header>
+
+                <div class="reports-grid">
+                    <article class="report-card">
+                        <header>
+                            <h3>Ringkasan Bulanan</h3>
+                            <select id="report-month" aria-label="Pilih bulan">
+
+                            </select>
+                        </header>
+                        <div class="report-summary" id="monthly-summary">
+
+                        </div>
+                        <canvas id="monthly-chart" aria-label="Grafik batang pemasukan vs pengeluaran bulanan"></canvas>
+                    </article>
+
+                    <article class="report-card">
+                        <header>
+                            <h3>Perbandingan Kategori</h3>
+                            <select id="report-category-period" aria-label="Periode">
+                                <option value="month">Bulan Ini</option>
+                                <option value="quarter">Triwulan Ini</option>
+                                <option value="year">Tahun Ini</option>
+                            </select>
+                        </header>
+                        <div class="category-breakdown" id="category-breakdown">
+
+                        </div>
+                    </article>
+
+                    <article class="report-card full-width">
+                        <header>
+                            <h3>Arus Kas</h3>
+                            <select id="cashflow-period" aria-label="Periode arus kas">
+                                <option value="month">Bulan Ini</option>
+                                <option value="quarter">Triwulan Ini</option>
+                                <option value="year">Tahun Ini</option>
+                            </select>
+                        </header>
+                        <canvas id="cashflow-chart" aria-label="Grafik area arus kas"></canvas>
+                    </article>
+                </div>
+            </section>
+
+            <section id="panel-budgets" class="tab-panel" role="tabpanel" aria-labelledby="tab-budgets">
+                <header class="panel-header">
+                    <h2>Anggaran Bulanan</h2>
+                    <button class="btn btn-primary" id="btn-add-budget">
+                        <i data-lucide="plus" size="18"></i> Buat Anggaran
+                    </button>
+                </header>
+
+                <div class="budgets-list" id="budgets-list">
+
+                </div>
+
+                <div class="empty-state" id="empty-budgets" hidden>
+                    <i data-lucide="target" size="48"></i>
+                    <h3>Belum ada anggaran</h3>
+                    <p>Tetapkan batas pengeluaran per kategori untuk mengontrol keuangan</p>
+                    <button class="btn btn-primary" id="btn-first-budget">
+                        <i data-lucide="plus" size="18"></i> Buat Anggaran
+                    </button>
+                </div>
+            </section>
+
+            <section id="panel-settings" class="tab-panel" role="tabpanel" aria-labelledby="tab-settings">
+                <header class="panel-header">
+                    <h2>Pengaturan</h2>
+                </header>
+
+                <div class="settings-grid">
+                    <article class="settings-card">
+                        <h3>Profil</h3>
+                        <div class="profile-photo">
+                            <div class="profile-avatar" id="profile-avatar">U</div>
+                            <div class="profile-photo-actions">
+                                <button type="button" class="btn btn-ghost btn-sm" id="btn-change-photo">
+                                    <i data-lucide="camera" size="16"></i> Ganti Foto
+                                </button>
+                                <button type="button" class="btn btn-ghost btn-sm danger" id="btn-remove-photo" hidden>
+                                    <i data-lucide="trash-2" size="16"></i> Hapus
+                                </button>
+                                <p class="form-hint">JPG atau PNG, maks. 5 MB.</p>
+                                <input type="file" id="photo-input" accept="image/*" hidden>
+                            </div>
+                        </div>
+                        <form id="profile-form">
+                            <div class="form-group">
+                                <label for="setting-name">Nama Lengkap</label>
+                                <input type="text" id="setting-name" name="name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="setting-email">Email</label>
+                                <input type="email" id="setting-email" name="email" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                        </form>
+                    </article>
+
+                    <article class="settings-card">
+                        <h3>Keamanan</h3>
+                        <form id="password-form">
+                            <div class="form-group">
+                                <label for="current-password">Kata Sandi Saat Ini</label>
+                                <input type="password" id="current-password" name="current" autocomplete="current-password">
+                            </div>
+                            <div class="form-group">
+                                <label for="new-password">Kata Sandi Baru</label>
+                                <input type="password" id="new-password" name="new" minlength="8" autocomplete="new-password">
+                            </div>
+                            <div class="form-group">
+                                <label for="confirm-password">Konfirmasi Kata Sandi Baru</label>
+                                <input type="password" id="confirm-password" name="confirm" autocomplete="new-password">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Ubah Kata Sandi</button>
+                        </form>
+                    </article>
+
+                    <article class="settings-card">
+                        <h3>Preferensi</h3>
+                        <div class="setting-item">
+                            <div>
+                                <h4>Mata Uang Default</h4>
+                                <p class="setting-desc">Mata uang yang digunakan untuk transaksi baru</p>
+                            </div>
+                            <select id="setting-currency" aria-label="Mata uang default">
+                                <option value="IDR">IDR - Rupiah Indonesia</option>
+                                <option value="USD">USD - US Dollar</option>
+                                <option value="SGD">SGD - Singapore Dollar</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <div>
+                                <h4>Format Tanggal</h4>
+                            </div>
+                            <select id="setting-date-format" aria-label="Format tanggal">
+                                <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+                                <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                                <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                            </select>
+                        </div>
+                        <div class="setting-item toggle-setting">
+                            <div>
+                                <h4>Mode Gelap</h4>
+                                <p class="setting-desc">Gunakan tema gelap untuk menghemat baterai</p>
+                            </div>
+                            <label class="toggle" role="switch" aria-checked="false">
+                                <input type="checkbox" id="setting-dark-mode">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="setting-item toggle-setting">
+                            <div>
+                                <h4>Notifikasi Pengeluaran</h4>
+                                <p class="setting-desc">Dapatkan notifikasi saat mendekati batas anggaran</p>
+                            </div>
+                            <label class="toggle" role="switch" aria-checked="true">
+                                <input type="checkbox" id="setting-notifications" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </article>
+
+                    <article class="settings-card">
+                        <h3>Data & Privasi</h3>
+                        <div class="data-actions">
+                            <button class="btn btn-ghost" id="btn-export-data">
+                                <i data-lucide="download" size="18"></i>
+                                <div>
+                                    <strong>Ekspor Data</strong>
+                                    <span>Unduh semua transaksi sebagai CSV/JSON</span>
+                                </div>
+                            </button>
+                            <button class="btn btn-ghost" id="btn-import-data">
+                                <i data-lucide="upload" size="18"></i>
+                                <div>
+                                    <strong>Impor Data</strong>
+                                    <span>Masukkan data dari file CSV/JSON</span>
+                                </div>
+                            </button>
+                            <button class="btn btn-ghost danger" id="btn-clear-data">
+                                <i data-lucide="trash-2" size="18"></i>
+                                <div>
+                                    <strong>Hapus Semua Data</strong>
+                                    <span>Tindakan ini tidak dapat dibatalkan</span>
+                                </div>
+                            </button>
+                        </div>
+                    </article>
+
+                    <article class="settings-card">
+                        <h3>Tentang</h3>
+                        <div class="about-info">
+                            <p><strong>ArtaUnh</strong> v1.0.0</p>
+                            <p>Aplikasi pencatat keuangan pribadi yang sederhana, cepat, dan privat.</p>
+                            <p>Data disimpan lokal di browser Anda. Tidak ada server, tidak ada tracking.</p>
+                            <hr style="margin: var(--space-4) 0; border-color: var(--color-border);">
+                        </div>
+                    </article>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="toast-container" class="toast-container" role="region" aria-label="Notifikasi" aria-live="polite"></div>
+
+    <div id="confirm-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-title" hidden>
+        <div class="modal-backdrop" tabindex="-1"></div>
+        <div class="modal-container confirm-container">
+            <div class="confirm-content">
+                <div class="confirm-icon" id="confirm-icon"></div>
+                <h3 id="confirm-title">Konfirmasi</h3>
+                <p id="confirm-message">Apakah Anda yakin?</p>
+                <div class="confirm-actions">
+                    <button class="btn btn-ghost" id="confirm-cancel">Batal</button>
+                    <button class="btn btn-danger" id="confirm-ok">Ya, Hapus</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="offline-indicator" class="offline-indicator" hidden>
+        <i data-lucide="wifi-off" size="16"></i>
+        <span>Mode Offline - sambungkan internet untuk memuat & menyimpan data</span>
+    </div>
+
+    <script src="js/supabase-config.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/charts.js"></script>
+    <script src="js/app.js"></script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(console.error);
+        }
+    </script>
+</body>
+</html>
