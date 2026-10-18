@@ -41,8 +41,10 @@
         const rows = transactions.filter((t) => t.type === "expense" && (!period || Store.withinPeriod(t.date, period)));
         const byCat = {};
         rows.forEach((t) => { byCat[t.category] = (byCat[t.category] || 0) + t.amount; });
-        const labels = Object.keys(byCat);
-        const values = labels.map((l) => byCat[l]);
+        const entries = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
+        const labels = entries.map((e) => e[0]);
+        const values = entries.map((e) => e[1]);
+        const total = values.reduce((a, b) => a + b, 0) || 0;
 
         destroy(canvas);
         if (!labels.length) { canvas.style.display = "none"; if (legendEl) legendEl.innerHTML = emptyMsg(); return; }
@@ -51,24 +53,82 @@
         const colors = labels.map((_, i) => Store.CATEGORY_COLORS[i % Store.CATEGORY_COLORS.length]);
         const p = palette();
 
-        new global.Chart(canvas.getContext("2d"), {
+        const totalLabel = {
+            id: "expenseTotalLabel",
+            afterDraw(chart) {
+                const area = chart.chartArea;
+                if (!area) return;
+                const ctx = chart.ctx;
+                const x = (area.left + area.right) / 2;
+                const y = (area.top + area.bottom) / 2;
+                ctx.save();
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillStyle = cssVar("--color-text-tertiary", "#7d7568");
+                ctx.font = "600 10px " + cssVar("--font-sans", "sans-serif");
+                ctx.fillText("TOTAL", x, y - 15);
+                ctx.fillStyle = cssVar("--color-text", "#17130f");
+                ctx.font = "700 17px " + cssVar("--font-mono", "monospace");
+                ctx.fillText("Rp " + fmt(total), x, y + 5);
+                ctx.restore();
+            },
+        };
+
+        const chart = new global.Chart(canvas.getContext("2d"), {
             type: "doughnut",
-            data: { labels, datasets: [{ data: values, backgroundColor: colors, borderColor: p.surface, borderWidth: 2, hoverOffset: 6 }] },
+            data: {
+                labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: colors,
+                    borderColor: p.surface,
+                    borderWidth: 2,
+                    hoverOffset: 10,
+                    spacing: 2,
+                }],
+            },
             options: {
-                responsive: true, maintainAspectRatio: false, cutout: "64%",
+                responsive: true, maintainAspectRatio: false, cutout: "68%",
+                layout: { padding: 6 },
                 plugins: {
                     legend: { display: false },
-                    tooltip: { callbacks: { label: (c) => " Rp " + fmt(c.parsed) } },
+                    tooltip: {
+                        callbacks: {
+                            label: (c) => {
+                                const pct = total ? Math.round((c.parsed / total) * 100) : 0;
+                                return " Rp " + fmt(c.parsed) + "  •  " + pct + "%";
+                            },
+                        },
+                    },
                 },
             },
+            plugins: [totalLabel],
         });
 
         if (legendEl) {
-            const total = values.reduce((a, b) => a + b, 0) || 1;
-            legendEl.innerHTML = labels.map((l, i) =>
-                `<div class="legend-item"><span class="legend-swatch" style="background:${colors[i]}"></span>` +
-                `<span>${escapeHtml(l)}</span><span class="legend-value">${Math.round((values[i] / total) * 100)}%</span></div>`
-            ).join("");
+            legendEl.innerHTML = labels.map((l, i) => {
+                const pct = total ? Math.round((values[i] / total) * 100) : 0;
+                return `<div class="legend-item" data-index="${i}" title="${escapeHtml(l)}">` +
+                    `<span class="legend-swatch" style="background:${colors[i]}"></span>` +
+                    `<span class="legend-meta">` +
+                    `<span class="legend-name">${escapeHtml(l)}</span>` +
+                    `<span class="legend-amount">Rp ${fmt(values[i])} · ${pct}%</span>` +
+                    `</span></div>`;
+            }).join("");
+
+            Array.from(legendEl.children).forEach((el) => {
+                const i = Number(el.dataset.index);
+                el.addEventListener("mouseenter", () => {
+                    el.classList.add("active");
+                    chart.setActiveElements([{ datasetIndex: 0, index: i }]);
+                    chart.update();
+                });
+                el.addEventListener("mouseleave", () => {
+                    el.classList.remove("active");
+                    chart.setActiveElements([]);
+                    chart.update();
+                });
+            });
         }
     }
 

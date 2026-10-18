@@ -292,6 +292,7 @@
 
         $("#total-income").textContent = formatMoney(sum.income);
         $("#total-expense").textContent = formatMoney(sum.expense);
+        $("#total-balance").textContent = formatMoney(sum.income - sum.expense);
         $("#this-month-count").textContent = monthTx.length;
 
         const usedCats = new Set(monthTx.map((t) => t.category));
