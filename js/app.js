@@ -10,6 +10,22 @@
     const ic = (name, size) => `<i data-lucide="${name}" width="${size || 18}" height="${size || 18}"></i>`;
     const refreshIcons = () => { if (window.lucide) window.lucide.createIcons(); };
 
+    let chartLibPromise = null;
+    function ensureChartLib() {
+        if (window.Chart) return Promise.resolve();
+        if (!chartLibPromise) {
+            chartLibPromise = new Promise((resolve, reject) => {
+                const script = document.createElement("script");
+                script.src = "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js";
+                script.async = true;
+                script.onload = () => resolve();
+                script.onerror = () => reject(new Error("Gagal memuat Chart.js"));
+                document.head.appendChild(script);
+            });
+        }
+        return chartLibPromise;
+    }
+
     let currentUser = null;
     let editingTxId = null;
     const txState = { search: "", type: "all", category: "all", period: "month", page: 1, pageSize: 10 };
@@ -250,6 +266,9 @@
         renderTransactions();
         buildCategoryFilter();
         refreshIcons();
+        ensureChartLib()
+            .then(() => { if (currentUser) refreshAllCharts(); })
+            .catch((err) => console.error("[ArtaUnh]", err));
     }
 
     function avatarInner(user) {
@@ -898,7 +917,7 @@
         if (!window.ArtaUnhStore || !window.ArtaUnhStore.client) {
             const content = $("#loading-screen .loading-content");
             if (content) {
-                content.innerHTML = '<img class="loading-logo" src="assets/logo-icon.png" alt="">' +
+                content.innerHTML = '<img class="loading-logo" src="assets/logo-icon.webp" alt="" width="52" height="52">' +
                     '<span class="loading-text">Konfigurasi Supabase belum diisi</span>' +
                     '<p style="max-width:320px;text-align:center;opacity:.75;margin-top:8px">Isi url dan anonKey di <b>js/supabase-config.js</b>, lalu muat ulang halaman.</p>';
             }
@@ -918,14 +937,10 @@
         try { user = await Auth.currentUser(); }
         catch (e) { console.error("[ArtaUnh] Gagal memulihkan sesi", e); }
 
-        setTimeout(() => {
-            $("#loading-screen").style.transition = "opacity .3s ease";
-            $("#loading-screen").style.opacity = "0";
-            setTimeout(() => { $("#loading-screen").hidden = true; }, 320);
-            if (user) startApp(user);
-            else showAuth("login");
-            refreshIcons();
-        }, 650);
+        $("#loading-screen").hidden = true;
+        if (user) startApp(user);
+        else showAuth("login");
+        refreshIcons();
     }
 
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);

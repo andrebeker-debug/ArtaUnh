@@ -1,4 +1,4 @@
-const CACHE = "artaunh-v1.5.5";
+const CACHE = "artaunh-v1.5.6";
 
 const APP_SHELL = [
     "./",
@@ -8,9 +8,12 @@ const APP_SHELL = [
     "./js/supabase-config.js",
     "./js/storage.js",
     "./js/auth.js",
+    "./js/icons.js",
     "./js/charts.js",
     "./js/app.js",
-    "./assets/logo-icon.png",
+    "./assets/logo-icon.webp",
+    "./assets/fonts/source-sans-3-latin.woff2",
+    "./assets/fonts/space-grotesk-latin.woff2",
     "./assets/icon-192.png",
     "./assets/icon-512.png",
     "./assets/apple-touch-icon.png",
